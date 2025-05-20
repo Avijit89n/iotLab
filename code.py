@@ -3,6 +3,7 @@ import numpy as np
 import threading
 import time
 from pymycobot.mycobot import MyCobot
+import RPi.GPIO as GPIO
 
 # HSV color ranges
 color_ranges = {
@@ -16,6 +17,9 @@ color_ranges = {
 
 # Robot setup
 mc = MyCobot('/dev/ttyAMA0', 1000000)
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(20,GPIO.OUT)
+GPIO.setup(21,GPIO.OUT)
 
 # Control flag
 moving = False
@@ -26,13 +30,56 @@ def move_robot(color_name):
     global moving, last_color
     print(f"Started movement for {color_name}")
     moving = True
+    time.sleep(1)
 
-    mc.send_angles([0, 0, 0, 0, 0, 0], 30)
-    time.sleep(1.2)
-    mc.send_angles([10, 0, -90, 10, 0, 0], 30)
-    time.sleep(1.2)
-    mc.send_angles([110, 10, -110, 15, 0, 0], 30)
-    time.sleep(1.2)
+    if color_name == "Blue" :
+        mc.send_angles([0, 0, 0, 0, 0, 0], 30)
+        mc.send_angles([10, 0, -90, 10, 0, 0], 30)
+        mc.send_angles([25, -20, -145, 80, 0, 0], 30)
+        GPIO.output(20,GPIO.LOW)
+        GPIO.output(21,GPIO.LOW)
+        time.sleep(2)
+        mc.send_angles([10,0,(-90),10,0,0],30)
+        mc.send_angles([(-20),(-65),0,(-15),0,0],30)
+        mc.send_angles([(-20),(-70),(-10),0,0,0],30)
+        GPIO.output(20,GPIO.HIGH)
+        GPIO.output(21,GPIO.HIGH)
+        time.sleep(7)
+        mc.send_angles([10,0,(-90),10,0,0],30)
+        mc.send_angles([0,0,0,0,0,0],30)
+    
+    elif color_name == "Red" :
+        mc.send_angles([0, 0, 0, 0, 0, 0], 30)
+        mc.send_angles([10, 0, -90, 10, 0, 0], 30)
+        mc.send_angles([20, -25, -145, 85, 0, 0], 30)
+        GPIO.output(20,GPIO.LOW)
+        GPIO.output(21,GPIO.LOW)
+        time.sleep(2)
+        mc.send_angles([10,0,(-90),10,0,0],30)
+        mc.send_angles([(-30),(-10),(-100),30,0,0],30)
+        mc.send_angles([(-30),(-20),(-100),35,0,0],30)
+        GPIO.output(20,GPIO.HIGH)
+        GPIO.output(21,GPIO.HIGH)
+        time.sleep(7)
+        mc.send_angles([10,0,(-90),10,0,0],30)
+        mc.send_angles([0,0,0,0,0,0],30)
+        
+    elif color_name == "Green":
+        mc.send_angles([0, 0, 0, 0, 0, 0], 30)
+        mc.send_angles([10, 0, -90, 10, 0, 0], 30)
+        mc.send_angles([20, -25, -145, 85, 0, 0], 30)
+        GPIO.output(20,GPIO.LOW)
+        GPIO.output(21,GPIO.LOW)
+        time.sleep(2)
+        mc.send_angles([10,0,(-90),10,0,0],30)
+        mc.send_angles([110,10,(-110),15,0,0],30)
+        mc.send_angles([110,0,(-120),35,0,0], 30)
+        GPIO.output(20,GPIO.HIGH)
+        GPIO.output(21,GPIO.HIGH)
+        time.sleep(7)
+        mc.send_angles([10,0,(-90),10,0,0],30)
+        mc.send_angles([0,0,0,0,0,0],30)
+    
 
     last_color = color_name
     moving = False
