@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
+import threading
 import time
 from pymycobot.mycobot import MyCobot
 
+# HSV color ranges
 color_ranges = {
     "Red": [
         (np.array([0, 100, 100]), np.array([10, 255, 255])),
@@ -12,12 +14,35 @@ color_ranges = {
     "Blue": [(np.array([94, 80, 2]), np.array([126, 255, 255]))]
 }
 
+# Robot setup
 mc = MyCobot('/dev/ttyAMA0', 1000000)
-cap = cv2.VideoCapture(0)
 
-last_detected_color = None
+# Control flag
+moving = False
+last_color = None
+cooldown = 3  # seconds
+
+def move_robot(color_name):
+    global moving, last_color
+    print(f"Started movement for {color_name}")
+    moving = True
+
+    mc.send_angles([0, 0, 0, 0, 0, 0], 30)
+    time.sleep(1.2)
+    mc.send_angles([10, 0, -90, 10, 0, 0], 30)
+    time.sleep(1.2)
+    mc.send_angles([110, 10, -110, 15, 0, 0], 30)
+    time.sleep(1.2)
+
+    last_color = color_name
+    moving = False
+    print(f"Completed movement for {color_name}")
+
+# Camera setup
+cap = cv2.VideoCapture(0)
+cv2.namedWindow("Color Cube Detection")
+
 last_detection_time = 0
-detection_cooldown = 3  # seconds
 
 while True:
     ret, frame = cap.read()
@@ -26,6 +51,7 @@ while True:
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
     detected = False
+    current_time = time.time()
 
     for color_name, ranges in color_ranges.items():
         mask = None
@@ -45,33 +71,22 @@ while True:
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 cv2.putText(frame, color_name, (x, y - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                
+
                 detected = True
-                current_time = time.time()
 
-                # Only send movement if not recently triggered
-                if (last_detected_color != color_name or
-                        current_time - last_detection_time > detection_cooldown):
-                    
-                    print(f"Detected: {color_name}, moving robot.")
-                    mc.send_angles([0, 0, 0, 0, 0, 0], 30)
-                    time.sleep(1.5)
+                if (not moving and 
+                    (last_color != color_name or (current_time - last_detection_time) > cooldown)):
 
-                    mc.send_angles([10, 0, -90, 10, 0, 0], 30)
-                    time.sleep(1.5)
-
-                    mc.send_angles([110, 10, -110, 15, 0, 0], 30)
-                    time.sleep(1.5)
-
-                    last_detected_color = color_name
                     last_detection_time = current_time
-                break  # Stop checking other colors once one is found
+                    # Start movement in background thread
+                    threading.Thread(target=move_robot, args=(color_name,), daemon=True).start()
+
+                break  # stop checking other colors once one is found
 
     if not detected:
-        last_detected_color = None  # Reset if nothing is detected
+        last_color = None
 
     cv2.imshow("Color Cube Detection", frame)
-
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
